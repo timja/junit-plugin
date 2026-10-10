@@ -38,6 +38,7 @@ import hudson.tasks.junit.TestResultAction;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,11 @@ import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import jenkins.model.ModelObjectWithContextMenu.ContextMenu;
+import jenkins.model.menu.Group;
+import org.jenkins.ui.icon.IconSpec;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.HttpRedirect;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.QueryParameter;
@@ -489,7 +495,75 @@ public abstract class TestObject extends hudson.tasks.junit.TestObject {
         return new History(this);
     }
 
+    /**
+     * Actions contributed by {@link TestObjectActionFactory} extensions, ordered by {@link Action#getGroup()}
+     * and then display name.
+     */
+    @Restricted(NoExternalUse.class) // for app-bar-actions.jelly
+    public List<Action> getAppBarActions() {
+        List<Action> actions = new ArrayList<>();
+        for (TestObjectActionFactory<?> factory : TestObjectActionFactory.all()) {
+            addActions(factory, actions);
+        }
+        actions.sort(Comparator.comparingInt((Action a) -> a.getGroup().getOrder())
+                .thenComparing(a -> Util.fixNull(a.getDisplayName())));
+        return actions;
+    }
+
+    private <T extends TestObject> void addActions(TestObjectActionFactory<T> factory, List<Action> actions) {
+        Class<T> type = factory.type();
+        if (!type.isInstance(this)) {
+            return;
+        }
+        try {
+            for (Action action : factory.createFor(type.cast(this))) {
+                if (action != null) {
+                    actions.add(action);
+                }
+            }
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Could not load actions from " + factory + " for " + this, e);
+        }
+    }
+
+    /**
+     * Whether any app bar action belongs in the overflow menu rather than being shown as a button.
+     */
+    @Restricted(NoExternalUse.class) // for app-bar-actions.jelly
+    public boolean hasAppBarMenuActions() {
+        return getAppBarActions().stream().anyMatch(a -> hasIcon(a) && isInMenu(a));
+    }
+
+    /**
+     * Serves the overflow menu of the app bar ({@code ?menu-only=true}) and the context menu of this test object.
+     */
+    @Restricted(NoExternalUse.class) // for the app bar overflow menu
+    public ContextMenu doContextMenu(StaplerRequest2 req, StaplerResponse2 rsp) {
+        boolean menuOnly = Boolean.parseBoolean(req.getParameter("menu-only"));
+        return new ContextMenu()
+                .addAll(getAppBarActions().stream()
+                        .filter(TestObject::hasIcon)
+                        .filter(a -> menuOnly ? isInMenu(a) : a.isVisibleInContextMenu())
+                        .toList());
+    }
+
+    private static boolean hasIcon(Action action) {
+        if (action instanceof IconSpec iconSpec && iconSpec.getIconClassName() != null) {
+            return true;
+        }
+        return action.getIconFileName() != null;
+    }
+
+    private static boolean isInMenu(Action action) {
+        return action.getGroup().getOrder() >= Group.FIRST_IN_MENU.getOrder();
+    }
+
     public Object getDynamic(String token, StaplerRequest2 req, StaplerResponse2 rsp) {
+        for (Action a : getAppBarActions()) {
+            if (token.equals(a.getUrlName())) {
+                return a;
+            }
+        }
         for (Action a : getTestActions()) {
             if (a == null) {
                 continue; // be defensive

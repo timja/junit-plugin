@@ -95,6 +95,8 @@ THE SOFTWARE.
             <l:icon src="symbol-bar-chart-outline plugin-ionicons-api" />
           </a>
 
+          <test:app-bar-actions it="${it}" />
+
           <t:editDescriptionButton permission="${it.run.UPDATE}" compact="true" />
         </div>
       </div>

@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 <!-- Displays the chart that show how long builds are taking -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:bs="/bootstrap5" xmlns:c="/charts">
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:bs="/bootstrap5" xmlns:c="/charts" xmlns:test="/lib/hudson/test">
   <j:set var="history" value="${it}" />
   <j:set var="it" value="${history.testObject.parentAction}" />
 
@@ -98,6 +98,7 @@ THE SOFTWARE.
           </select>
         </div>
       </div>
+      <test:app-bar-actions it="${it.testObject}" />
     </l:app-bar>
 
       <bs:card title="">

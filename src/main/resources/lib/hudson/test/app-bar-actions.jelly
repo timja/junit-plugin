@@ -1,0 +1,36 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler">
+  <st:documentation>
+    Renders the actions contributed by TestObjectActionFactory extensions for the app bar of a test result page.
+    Actions in an app bar group become buttons, the others go into an overflow menu.
+
+    Uses the same markup and script as core's l:actions, which needs an Actionable,
+    but omits the overflow button when no action belongs in the menu.
+
+    <st:attribute name="it" use="required" type="hudson.tasks.test.TestObject">
+      The test object to display actions for.
+    </st:attribute>
+  </st:documentation>
+
+  <j:set var="testObject" value="${attrs.it}" />
+  <j:set var="appBarActions" value="${testObject.appBarActions}" />
+  <j:if test="${!appBarActions.isEmpty()}">
+    <j:set var="appBarUrl" value="${rootURL}/${testObject.url}/" />
+    <button data-type="auto-overflow"
+            class="jenkins-button jenkins-jumplist-link ${testObject.hasAppBarMenuActions() ? '' : 'jenkins-hidden'}"
+            tooltip="${%More actions}"
+            data-href="${appBarUrl}"
+            data-jumplist-type="menu"
+            data-testid="test-app-bar-overflow-button"
+            type="button">
+      <div class="jenkins-overflow-button__ellipsis">
+        <span />
+        <span />
+        <span />
+      </div>
+    </button>
+    <template>
+      ${h.convertActionsToJson(appBarUrl, appBarActions)}
+    </template>
+  </j:if>
+</j:jelly>
