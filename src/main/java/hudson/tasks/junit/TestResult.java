@@ -443,7 +443,7 @@ public final class TestResult extends MetaTabulatedResult {
 
     private void parse(long filesTimestamp, PipelineTestDetails pipelineTestDetails, Iterable<File> reportFiles)
             throws IOException {
-        List<List<SuiteResult>> openTestReports = new ArrayList<>();
+        List<OpenTestReportConverter.TestRun> openTestReports = new ArrayList<>();
         for (File reportFile : reportFiles) {
             if (skipOldReports
                     && Files.getLastModifiedTime(reportFile.toPath()).toMillis()
@@ -528,7 +528,7 @@ public final class TestResult extends MetaTabulatedResult {
      */
     @Deprecated
     public void parse(Iterable<File> reportFiles, PipelineTestDetails pipelineTestDetails) throws IOException {
-        List<List<SuiteResult>> openTestReports = new ArrayList<>();
+        List<OpenTestReportConverter.TestRun> openTestReports = new ArrayList<>();
         for (File reportFile : reportFiles) {
             // only count files that were actually updated during this build
             parsePossiblyEmpty(reportFile, pipelineTestDetails, openTestReports);
@@ -541,7 +541,9 @@ public final class TestResult extends MetaTabulatedResult {
      *                        parsed, so that the reruns of failed tests in some can be folded into the others
      */
     private void parsePossiblyEmpty(
-            File reportFile, PipelineTestDetails pipelineTestDetails, List<List<SuiteResult>> openTestReports)
+            File reportFile,
+            PipelineTestDetails pipelineTestDetails,
+            List<OpenTestReportConverter.TestRun> openTestReports)
             throws IOException {
         if (reportFile.length() == 0) {
             if (LOGGER.isLoggable(Level.FINE)) {
@@ -553,14 +555,15 @@ public final class TestResult extends MetaTabulatedResult {
                     sr, "[empty]", "Test report file " + reportFile.getAbsolutePath() + " was length 0"));
             add(sr);
         } else if (OtrReader.detect(reportFile) != null) {
-            openTestReports.add(parseSuites(reportFile, pipelineTestDetails));
+            openTestReports.add(new OpenTestReportConverter.TestRun(parseSuites(reportFile, pipelineTestDetails)));
         } else {
             parse(reportFile, pipelineTestDetails);
         }
     }
 
-    private void addOpenTestReports(List<List<SuiteResult>> openTestReports) {
-        for (SuiteResult suite : OpenTestReportConverter.mergeReruns(openTestReports)) {
+    private void addOpenTestReports(List<OpenTestReportConverter.TestRun> openTestReports) {
+        for (SuiteResult suite :
+                OpenTestReportConverter.mergeReruns(openTestReports).suites()) {
             add(suite);
         }
     }

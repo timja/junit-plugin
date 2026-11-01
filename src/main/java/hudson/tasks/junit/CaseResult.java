@@ -306,23 +306,25 @@ public class CaseResult extends TestResult implements Comparable<CaseResult> {
     /**
      * The result of this test once rerun, as in the XML reports of Maven Surefire: a test that passes on a rerun
      * passes, keeping the failures of its earlier attempts as flaky failures; a test that fails again keeps its first
-     * failure, with the later ones as rerun failures.
+     * failure, with the later ones as rerun failures. A rerun that is skipped, e.g. by an assumption, leaves it as is.
      *
      * @param attempt the result of the rerun
      * @return a new result, this one and the attempt are left untouched
      */
     CaseResult rerun(CaseResult attempt) {
         CaseResult result;
-        if (attempt.isFailed()) {
-            result = new CaseResult(this);
-            result.rerunFailures = new ArrayList<>(getRerunFailures());
-            result.rerunFailures.add(attempt.toFailure());
-        } else {
+        if (attempt.isPassed()) {
             result = new CaseResult(attempt);
             result.flakyFailures = new ArrayList<>(getFlakyFailures());
             result.flakyFailures.add(toFailure());
             result.flakyFailures.addAll(getRerunFailures());
             result.rerunFailures = null;
+        } else {
+            result = new CaseResult(this);
+            if (attempt.isFailed()) {
+                result.rerunFailures = new ArrayList<>(getRerunFailures());
+                result.rerunFailures.add(attempt.toFailure());
+            }
         }
         return result;
     }
